@@ -21,6 +21,8 @@ if auto_approve:
 # Check for number of shorts flag
 num_shorts = 1  # Default to 1 short
 manual_timeframes = None  # For manual time specification
+subtitle_style = "green_box"  # Default subtitle style
+zoom_mode = "auto"  # Default zoom mode
 
 for i, arg in enumerate(sys.argv[:]):
     if arg.startswith("--shorts="):
@@ -36,6 +38,22 @@ for i, arg in enumerate(sys.argv[:]):
             sys.argv.remove(arg)
         except:
             print("Invalid --times value")
+    elif arg.startswith("--subtitle-style="):
+        try:
+            subtitle_style = arg.split("=")[1]
+            sys.argv.remove(arg)
+        except:
+            print("Invalid --subtitle-style value")
+    elif arg.startswith("--zoom="):
+        try:
+            zoom_mode = arg.split("=")[1]
+            if zoom_mode not in ["auto", "fit", "fill", "none"]:
+                print(f"Invalid --zoom value '{zoom_mode}', using 'auto'")
+                zoom_mode = "auto"
+            else:
+                sys.argv.remove(arg)
+        except:
+            print("Invalid --zoom value")
 
 # Check if URL/file was provided as command-line argument
 if len(sys.argv) > 1:
@@ -98,7 +116,7 @@ else:
                         print("  [1] AI automatically selects best moments (default)")
                         print("  [2] Manually specify timeframes")
                         selection_mode = input("Your choice (1/2): ").strip()
-                        
+
                         if selection_mode == "2":
                             print("\nEnter timeframes in format: START-END,START-END")
                             print("Example: 10-130,200-320 (creates 2 shorts)")
@@ -109,7 +127,45 @@ else:
                             ).strip()
                             if shorts_input.isdigit() and int(shorts_input) > 0:
                                 num_shorts = int(shorts_input)
-                            print(f"Will generate {num_shorts} short(s) using AI selection\n")
+                            print(
+                                f"Will generate {num_shorts} short(s) using AI selection\n"
+                            )
+                        
+                        # Ask for subtitle style
+                        print("\nSelect subtitle style:")
+                        print("  [1] Green Box (default) - Black text on green background")
+                        print("  [2] Classic - White text with black outline")
+                        print("  [3] Minimal - Subtle white text with thin outline")
+                        print("  [4] Bold Yellow - Large yellow text with thick outline")
+                        print("  [5] TikTok - Large white text, prominent outline")
+                        style_choice = input("Your choice (1-5): ").strip()
+                        
+                        style_map = {
+                            "1": "green_box",
+                            "2": "classic",
+                            "3": "minimal",
+                            "4": "bold_yellow",
+                            "5": "tiktok",
+                        }
+                        subtitle_style = style_map.get(style_choice, "green_box")
+                        print(f"✓ Using '{subtitle_style}' subtitle style\n")
+                        
+                        # Ask for zoom mode
+                        print("\nSelect zoom mode:")
+                        print("  [1] Auto (default) - Intelligently adjusts zoom")
+                        print("  [2] Fit - Zoom out to show full width")
+                        print("  [3] Fill - Zoom in to fill frame (may clip content)")
+                        print("  [4] None - No zoom adjustment")
+                        zoom_choice = input("Your choice (1-4): ").strip()
+                        
+                        zoom_map = {
+                            "1": "auto",
+                            "2": "fit",
+                            "3": "fill",
+                            "4": "none",
+                        }
+                        zoom_mode = zoom_map.get(zoom_choice, "auto")
+                        print(f"✓ Using '{zoom_mode}' zoom mode\n")
                 else:
                     print("Cancelled by user.")
                     sys.exit(0)
@@ -164,6 +220,7 @@ def parse_timeframes(timeframes_str):
         print(f"Error parsing timeframes: {e}")
         return None
 
+
 # Clean and slugify title for filename
 def clean_filename(title):
     # Convert to lowercase
@@ -193,10 +250,10 @@ if Vid:
         # Check if transcription already exists
         clean_title = clean_filename(video_title) if video_title else "output"
         transcription_file = f"transcriptions/{clean_title}_transcription.txt"
-        
+
         # Create transcriptions directory if it doesn't exist
         os.makedirs("transcriptions", exist_ok=True)
-        
+
         # Try to load existing transcription
         transcriptions = None
         if os.path.exists(transcription_file):
@@ -204,13 +261,13 @@ if Vid:
                 print(f"\nFound existing transcription: {transcription_file}")
                 print("Loading cached transcription...")
                 transcriptions = []
-                with open(transcription_file, 'r', encoding='utf-8') as f:
+                with open(transcription_file, "r", encoding="utf-8") as f:
                     for line in f:
                         line = line.strip()
-                        if line and ' - ' in line and ': ' in line:
+                        if line and " - " in line and ": " in line:
                             # Parse format: "start - end: text"
-                            time_part, text = line.split(': ', 1)
-                            start_str, end_str = time_part.split(' - ')
+                            time_part, text = line.split(": ", 1)
+                            start_str, end_str = time_part.split(" - ")
                             start = float(start_str)
                             end = float(end_str)
                             transcriptions.append([text, start, end])
@@ -218,22 +275,22 @@ if Vid:
             except Exception as e:
                 print(f"Warning: Could not load cached transcription: {e}")
                 transcriptions = None
-        
+
         # If no cached transcription, create new one
         if transcriptions is None:
             print("Generating new transcription...")
             transcriptions = transcribeAudio(Audio)
-            
+
             # Save transcription to file
             if len(transcriptions) > 0:
                 try:
-                    with open(transcription_file, 'w', encoding='utf-8') as f:
+                    with open(transcription_file, "w", encoding="utf-8") as f:
                         for text, start, end in transcriptions:
                             f.write(f"{start} - {end}: {text}\n")
                     print(f"✓ Transcription saved to: {transcription_file}\n")
                 except Exception as e:
                     print(f"Warning: Could not save transcription: {e}")
-        
+
         if len(transcriptions) > 0:
             print(f"\n{'='*60}")
             print(f"TRANSCRIPTION SUMMARY: {len(transcriptions)} segments")
@@ -283,6 +340,10 @@ if Vid:
             print(f"\n{'='*60}")
             print(f"✓ Successfully extracted {len(highlights)} highlight(s)")
             print(f"{'='*60}\n")
+            
+            # Create output folder for shorts
+            output_folder = "output_shorts"
+            os.makedirs(output_folder, exist_ok=True)
 
             # Process each highlight to create shorts
             created_shorts = []
@@ -307,7 +368,7 @@ if Vid:
                     crop_video(Vid, temp_clip, start, stop)
 
                     print(f"Step 2/4: Cropping to vertical format (9:16)...")
-                    crop_to_vertical(temp_clip, temp_cropped)
+                    crop_to_vertical(temp_clip, temp_cropped, zoom_mode=zoom_mode)
 
                     print(f"Step 3/4: Adding subtitles to video...")
                     add_subtitles_to_video(
@@ -315,6 +376,7 @@ if Vid:
                         temp_subtitled,
                         transcriptions,
                         video_start_time=start,
+                        style=subtitle_style,
                     )
 
                     # Generate final output filename
@@ -322,9 +384,13 @@ if Vid:
                         clean_filename(video_title) if video_title else "output"
                     )
                     if len(highlights) > 1:
-                        final_output = f"{clean_title}_{session_id}_short_{idx}.mp4"
+                        final_output = os.path.join(
+                            output_folder, f"{clean_title}_{session_id}_short_{idx}.mp4"
+                        )
                     else:
-                        final_output = f"{clean_title}_{session_id}_short.mp4"
+                        final_output = os.path.join(
+                            output_folder, f"{clean_title}_{session_id}_short.mp4"
+                        )
 
                     print(f"Step 4/4: Adding audio to final video...")
                     combine_videos(temp_clip, temp_subtitled, final_output)
