@@ -130,16 +130,20 @@ else:
                             print(
                                 f"Will generate {num_shorts} short(s) using AI selection\n"
                             )
-                        
+
                         # Ask for subtitle style
                         print("\nSelect subtitle style:")
-                        print("  [1] Green Box (default) - Black text on green background")
+                        print(
+                            "  [1] Green Box (default) - Black text on green background"
+                        )
                         print("  [2] Classic - White text with black outline")
                         print("  [3] Minimal - Subtle white text with thin outline")
-                        print("  [4] Bold Yellow - Large yellow text with thick outline")
+                        print(
+                            "  [4] Bold Yellow - Large yellow text with thick outline"
+                        )
                         print("  [5] TikTok - Large white text, prominent outline")
                         style_choice = input("Your choice (1-5): ").strip()
-                        
+
                         style_map = {
                             "1": "green_box",
                             "2": "classic",
@@ -149,7 +153,7 @@ else:
                         }
                         subtitle_style = style_map.get(style_choice, "green_box")
                         print(f"✓ Using '{subtitle_style}' subtitle style\n")
-                        
+
                         # Ask for zoom mode
                         print("\nSelect zoom mode:")
                         print("  [1] Auto (default) - Intelligently adjusts zoom")
@@ -157,7 +161,7 @@ else:
                         print("  [3] Fill - Zoom in to fill frame (may clip content)")
                         print("  [4] None - No zoom adjustment")
                         zoom_choice = input("Your choice (1-4): ").strip()
-                        
+
                         zoom_map = {
                             "1": "auto",
                             "2": "fit",
@@ -340,7 +344,7 @@ if Vid:
             print(f"\n{'='*60}")
             print(f"✓ Successfully extracted {len(highlights)} highlight(s)")
             print(f"{'='*60}\n")
-            
+
             # Create output folder for shorts
             output_folder = "output_shorts"
             os.makedirs(output_folder, exist_ok=True)

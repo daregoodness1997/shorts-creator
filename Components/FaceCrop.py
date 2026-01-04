@@ -2,18 +2,22 @@ import cv2
 import numpy as np
 from moviepy.editor import *
 from Components.Speaker import detect_faces_and_speakers, Frames
+
 global Fps
+
 
 def crop_to_vertical(input_video_path, output_video_path, zoom_mode="auto"):
     """
     Crop video to vertical 9:16 format with intelligent zoom adjustment
-    
+
     Args:
         input_video_path: Path to input video
         output_video_path: Path to output video
         zoom_mode: "auto" (intelligent zoom), "fit" (zoom out to fit all), "fill" (zoom in to fill), "none" (no zoom)
     """
-    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+    face_cascade = cv2.CascadeClassifier(
+        cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+    )
 
     cap = cv2.VideoCapture(input_video_path, cv2.CAP_FFMPEG)
     if not cap.isOpened():
@@ -30,7 +34,9 @@ def crop_to_vertical(input_video_path, output_video_path, zoom_mode="auto"):
     print(f"Output dimensions: {vertical_width}x{vertical_height}")
 
     if original_width < vertical_width:
-        print("⚠ Original video width is less than desired vertical width. Zooming out to fit.")
+        print(
+            "⚠ Original video width is less than desired vertical width. Zooming out to fit."
+        )
         zoom_mode = "fit"  # Force zoom out mode
 
     # Detect face position in first 30 frames to determine static crop position
@@ -42,7 +48,9 @@ def crop_to_vertical(input_video_path, output_video_path, zoom_mode="auto"):
         if not ret:
             break
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=8, minSize=(30, 30))
+        faces = face_cascade.detectMultiScale(
+            gray, scaleFactor=1.1, minNeighbors=8, minSize=(30, 30)
+        )
         if len(faces) > 0:
             # Get largest face
             best_face = max(faces, key=lambda f: f[2] * f[3])
@@ -50,10 +58,10 @@ def crop_to_vertical(input_video_path, output_video_path, zoom_mode="auto"):
             face_center_x = x + w // 2
             face_positions.append(face_center_x)
             face_widths.append(w)
-    
+
     # Determine zoom scale based on content
     zoom_scale = 1.0  # Default: no zoom
-    
+
     if zoom_mode == "fit":
         # Zoom out to ensure full width fits
         zoom_scale = vertical_width / original_width
@@ -68,18 +76,25 @@ def crop_to_vertical(input_video_path, output_video_path, zoom_mode="auto"):
             # Calculate if faces are too close to edges
             avg_face_x = int(sorted(face_positions)[len(face_positions) // 2])
             avg_face_width = int(np.mean(face_widths))
-            
+
             # Check if face would be clipped with current crop
-            potential_x_start = max(0, min(avg_face_x - vertical_width // 2, original_width - vertical_width))
+            potential_x_start = max(
+                0,
+                min(avg_face_x - vertical_width // 2, original_width - vertical_width),
+            )
             face_left_edge = avg_face_x - avg_face_width // 2
             face_right_edge = avg_face_x + avg_face_width // 2
-            
+
             # If face is too close to edges or content is wide, zoom out slightly
             margin_needed = avg_face_width * 0.3  # 30% margin on each side
-            if (face_left_edge < potential_x_start + margin_needed or 
-                face_right_edge > potential_x_start + vertical_width - margin_needed):
+            if (
+                face_left_edge < potential_x_start + margin_needed
+                or face_right_edge > potential_x_start + vertical_width - margin_needed
+            ):
                 zoom_scale = 0.85  # Zoom out 15%
-                print(f"📏 Zoom mode: AUTO - Face near edge, zooming out to {zoom_scale:.2f}x")
+                print(
+                    f"📏 Zoom mode: AUTO - Face near edge, zooming out to {zoom_scale:.2f}x"
+                )
             else:
                 zoom_scale = 1.0
                 print(f"📏 Zoom mode: AUTO - Face centered well, keeping 1.0x zoom")
@@ -88,20 +103,26 @@ def crop_to_vertical(input_video_path, output_video_path, zoom_mode="auto"):
             aspect_ratio = original_width / original_height
             if aspect_ratio > 2.0:  # Very wide content
                 zoom_scale = 0.75  # Zoom out 25% for wide screens
-                print(f"📏 Zoom mode: AUTO - Wide screen detected ({aspect_ratio:.2f}:1), zooming out to {zoom_scale:.2f}x")
+                print(
+                    f"📏 Zoom mode: AUTO - Wide screen detected ({aspect_ratio:.2f}:1), zooming out to {zoom_scale:.2f}x"
+                )
             else:
                 zoom_scale = 0.85  # Slight zoom out for screen recordings
-                print(f"📏 Zoom mode: AUTO - Screen recording, zooming out to {zoom_scale:.2f}x")
-    
+                print(
+                    f"📏 Zoom mode: AUTO - Screen recording, zooming out to {zoom_scale:.2f}x"
+                )
+
     # Apply zoom scaling
     if zoom_scale != 1.0:
         scaled_width = int(original_width * zoom_scale)
         scaled_height = int(original_height * zoom_scale)
-        print(f"Scaling video from {original_width}x{original_height} to {scaled_width}x{scaled_height}")
+        print(
+            f"Scaling video from {original_width}x{original_height} to {scaled_width}x{scaled_height}"
+        )
     else:
         scaled_width = original_width
         scaled_height = original_height
-    
+
     # Calculate static crop position
     if face_positions:
         # Use median face position for stability
@@ -111,15 +132,19 @@ def crop_to_vertical(input_video_path, output_video_path, zoom_mode="auto"):
             avg_face_x = int(avg_face_x * zoom_scale)
         # Offset slightly to the right to prevent right-side cutoff
         avg_face_x += int(60 * zoom_scale)
-        x_start = max(0, min(avg_face_x - vertical_width // 2, scaled_width - vertical_width))
+        x_start = max(
+            0, min(avg_face_x - vertical_width // 2, scaled_width - vertical_width)
+        )
         print(f"✓ Face detected. Using face-centered crop at x={x_start}")
         use_motion_tracking = False
     else:
         # No face detected - likely a screen recording
-        print(f"✗ No face detected. Using half-width with motion tracking for screen recording")
+        print(
+            f"✗ No face detected. Using half-width with motion tracking for screen recording"
+        )
         use_motion_tracking = True
         x_start = 0  # Initial position, will be updated by tracking
-    
+
     # Reset video to beginning
     cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
@@ -127,97 +152,113 @@ def crop_to_vertical(input_video_path, output_video_path, zoom_mode="auto"):
     if use_motion_tracking:
         # Scale factor already calculated above
         target_display_width = scaled_width * 0.67
-        print(f"Half-width display: showing {int(target_display_width)}px wide section from {scaled_width}px scaled frame")
+        print(
+            f"Half-width display: showing {int(target_display_width)}px wide section from {scaled_width}px scaled frame"
+        )
 
     # Write output
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(output_video_path, fourcc, fps, (vertical_width, vertical_height))
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    out = cv2.VideoWriter(
+        output_video_path, fourcc, fps, (vertical_width, vertical_height)
+    )
     global Fps
     Fps = fps
 
     frame_count = 0
     smoothed_x = 0  # Smoothed horizontal position in scaled coordinates
     prev_gray = None
-    
+
     # Calculate update interval for motion tracking (max 1 shift per second)
     if use_motion_tracking:
         update_interval = int(fps)  # Update once per second
-        print(f"Motion tracking: updating every {update_interval} frames (~1 shift/second)")
-    
+        print(
+            f"Motion tracking: updating every {update_interval} frames (~1 shift/second)"
+        )
+
     while True:
         ret, frame = cap.read()
         if not ret:
             break
-        
+
         if use_motion_tracking:
             # Resize frame first
-            resized_frame = cv2.resize(frame, (scaled_width, scaled_height), interpolation=cv2.INTER_LANCZOS4)
-            
+            resized_frame = cv2.resize(
+                frame, (scaled_width, scaled_height), interpolation=cv2.INTER_LANCZOS4
+            )
+
             # Update motion tracking once per second
             if frame_count % update_interval == 0:
                 curr_gray = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2GRAY)
-                
+
                 if prev_gray is not None:
                     # Calculate optical flow
-                    flow = cv2.calcOpticalFlowFarneback(prev_gray, curr_gray, None,
-                                                         0.5, 3, 15, 3, 5, 1.2, 0)
+                    flow = cv2.calcOpticalFlowFarneback(
+                        prev_gray, curr_gray, None, 0.5, 3, 15, 3, 5, 1.2, 0
+                    )
                     magnitude, _ = cv2.cartToPolar(flow[..., 0], flow[..., 1])
-                    
+
                     # Focus on significant motion
                     motion_threshold = 2.0
                     significant_motion = magnitude > motion_threshold
-                    
+
                     if np.any(significant_motion):
                         # Weight columns by motion
                         col_motion = np.sum(magnitude * significant_motion, axis=0)
-                        
+
                         if np.sum(col_motion) > 0:
-                            motion_x = int(np.average(np.arange(scaled_width), weights=col_motion))
+                            motion_x = int(
+                                np.average(np.arange(scaled_width), weights=col_motion)
+                            )
                             # Target x position to center motion in the crop
-                            target_x = max(0, min(motion_x - vertical_width // 2, scaled_width - vertical_width))
-                            
+                            target_x = max(
+                                0,
+                                min(
+                                    motion_x - vertical_width // 2,
+                                    scaled_width - vertical_width,
+                                ),
+                            )
+
                             # Smooth tracking (90% previous, 10% new)
                             smoothed_x = int(0.90 * smoothed_x + 0.10 * target_x)
-                
+
                 prev_gray = curr_gray
-            
+
             # Crop from scaled frame
             crop_x_start = int(smoothed_x)
             crop_x_end = min(crop_x_start + vertical_width, scaled_width)
-            
+
             # Ensure we get full width
             if crop_x_end - crop_x_start < vertical_width:
                 crop_x_start = max(0, crop_x_end - vertical_width)
-            
+
             cropped_frame = resized_frame[:, crop_x_start:crop_x_end]
-            
+
             # If scaled height is less than vertical height, add letterboxing
             if scaled_height < vertical_height:
                 canvas = np.zeros((vertical_height, vertical_width, 3), dtype=np.uint8)
                 offset_y = (vertical_height - scaled_height) // 2
-                canvas[offset_y:offset_y+scaled_height, :] = cropped_frame
+                canvas[offset_y : offset_y + scaled_height, :] = cropped_frame
                 cropped_frame = canvas
             elif scaled_height > vertical_height:
                 # Crop height from top
                 cropped_frame = cropped_frame[:vertical_height, :]
         else:
             # Face-detected videos: static crop
-            cropped_frame = frame[:, x_start:x_start+vertical_width]
-        
+            cropped_frame = frame[:, x_start : x_start + vertical_width]
+
         if cropped_frame.shape[1] == 0:
             print(f"Warning: Empty crop at frame {frame_count}")
             break
-        
+
         out.write(cropped_frame)
         frame_count += 1
-        
+
         if frame_count % 100 == 0:
             print(f"Processed {frame_count}/{total_frames} frames")
 
     cap.release()
     out.release()
     print(f"Cropping complete. Processed {frame_count} frames -> {output_video_path}")
-
 
 
 def combine_videos(video_with_audio, video_without_audio, output_filename):
@@ -231,21 +272,24 @@ def combine_videos(video_with_audio, video_without_audio, output_filename):
         combined_clip = clip_without_audio.set_audio(audio)
 
         global Fps
-        combined_clip.write_videofile(output_filename, codec='libx264', audio_codec='aac', fps=Fps, preset='medium', bitrate='3000k')
+        combined_clip.write_videofile(
+            output_filename,
+            codec="libx264",
+            audio_codec="aac",
+            fps=Fps,
+            preset="medium",
+            bitrate="3000k",
+        )
         print(f"Combined video saved successfully as {output_filename}")
-    
+
     except Exception as e:
         print(f"Error combining video and audio: {str(e)}")
 
 
-
 if __name__ == "__main__":
-    input_video_path = r'Out.mp4'
-    output_video_path = 'Croped_output_video.mp4'
-    final_video_path = 'final_video_with_audio.mp4'
+    input_video_path = r"Out.mp4"
+    output_video_path = "Croped_output_video.mp4"
+    final_video_path = "final_video_with_audio.mp4"
     detect_faces_and_speakers(input_video_path, "DecOut.mp4")
     crop_to_vertical(input_video_path, output_video_path)
     combine_videos(input_video_path, output_video_path, final_video_path)
-
-
-

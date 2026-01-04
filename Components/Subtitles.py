@@ -55,7 +55,13 @@ def add_subtitles_to_video(
             "bg_color": "#52b788",
             "stroke_color": None,
             "stroke_width": 0,
-            "margin": {"left": 40, "right": 40, "top": 20, "bottom": 20, "color": (82, 183, 136)},
+            "margin": {
+                "left": 40,
+                "right": 40,
+                "top": 20,
+                "bottom": 20,
+                "color": (82, 183, 136),
+            },
             "bottom_margin_factor": 0.12,
         },
         "classic": {
@@ -117,16 +123,16 @@ def add_subtitles_to_video(
             "align": "center",
             "kerning": 2,
         }
-        
+
         # Add background color if specified
         if style_config["bg_color"]:
             txt_clip_params["bg_color"] = style_config["bg_color"]
-        
+
         # Add stroke if specified
         if style_config["stroke_color"]:
             txt_clip_params["stroke_color"] = style_config["stroke_color"]
             txt_clip_params["stroke_width"] = style_config["stroke_width"]
-        
+
         txt_clip = TextClip(**txt_clip_params)
 
         # Add margin/padding if specified
