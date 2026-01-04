@@ -47,8 +47,8 @@ def add_subtitles_to_video(
     text_clips = []
 
     # Scale font size proportionally to video height for better readability
-    # 1080p → 80px, 720p → 53px
-    dynamic_fontsize = int(video.h * 0.074)
+    # 1080p → 70px, 720p → 47px
+    dynamic_fontsize = int(video.h * 0.065)
 
     for text, start, end in relevant_transcriptions:
         # Clean up text
@@ -56,24 +56,30 @@ def add_subtitles_to_video(
         if not text:
             continue
 
-        # Create text clip with modern, appealing styling
-        # Using bold white text with strong black outline for maximum readability
+        # Modern subtitle styling with green background box
+        # Black text on #52b788 green background with padding
         txt_clip = TextClip(
             text,
             fontsize=dynamic_fontsize,
-            color="white",  # Clean white text for better contrast
-            stroke_color="black",  # Strong black outline
-            stroke_width=3,  # Thicker stroke for better visibility
-            font="Arial-Bold",  # Bold, clean font that works on all systems
+            color="black",  # Black text for contrast on green
+            font="Arial-Bold",  # Bold, clean, modern font
             method="caption",
-            size=(video.w - 120, None),  # Leave 60px margin on each side
+            size=(video.w - 160, None),  # Leave 80px margin on each side for padding
             align="center",
             kerning=2,  # Better letter spacing
+            bg_color="#52b788",  # Modern green background
         )
 
-        # Position at bottom center with more breathing room
-        bottom_margin = int(video.h * 0.15)  # 15% from bottom
-        txt_clip = txt_clip.set_position(("center", video.h - txt_clip.h - bottom_margin))
+        # Add padding around the text by creating a margin box
+        # Position at bottom center with breathing room
+        bottom_margin = int(video.h * 0.12)  # 12% from bottom
+        txt_clip = txt_clip.margin(
+            left=40, right=40, top=20, bottom=20, color=(82, 183, 136), opacity=1.0
+        )  # RGB for #52b788
+        
+        txt_clip = txt_clip.set_position(
+            ("center", video.h - txt_clip.h - bottom_margin)
+        )
         txt_clip = txt_clip.set_start(start)
         txt_clip = txt_clip.set_duration(end - start)
 

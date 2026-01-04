@@ -56,9 +56,10 @@ Return a JSON object with the following structure:
 }}]
 
 ## Input
-{Transcription}
+{{Transcription}}
 """
     else:
+        # Use string concatenation to avoid f-string issues with {Transcription}
         return f"""
 The input contains a timestamped transcription of a video.
 Select {num_highlights} DIFFERENT 2-minute segments from the transcription, each containing something interesting, useful, surprising, controversial, or thought-provoking.
@@ -74,15 +75,16 @@ IMPORTANT REQUIREMENTS:
 
 Return a JSON array with {num_highlights} objects, each with this structure:
 ## Output 
-[{{
+[{{{{
     start: "Start time of the segment in seconds (number)",
     content: "The transcribed text from the selected segment (clean text only, NO timestamps)",
     end: "End time of the segment in seconds (number)"
-}}]
+}}}}]
 
 ## Input
-{Transcription}
+{{{{Transcription}}}}
 """
+
 
 system = get_system_prompt(1)  # Default for backward compatibility
 
@@ -187,29 +189,31 @@ def GetHighlight(Transcription):
 def GetMultipleHighlights(Transcription, num_highlights=1):
     """
     Get multiple highlight segments from a transcription.
-    
+
     Args:
         Transcription: Timestamped transcription text
         num_highlights: Number of highlights to extract
-        
+
     Returns:
         List of tuples [(start1, end1), (start2, end2), ...] or None if failed
     """
     from langchain_core.prompts import ChatPromptTemplate
     from pydantic import BaseModel, Field
     from typing import List
-    
+
     if num_highlights == 1:
         # Use the original function for single highlight
         start, end = GetHighlight(Transcription)
         if start is not None and end is not None:
             return [(start, end)]
         return None
-    
+
     # Define response model for multiple highlights
     class MultipleHighlightsResponse(BaseModel):
-        highlights: List[JSONResponse] = Field(description=f"List of {num_highlights} distinct highlight segments")
-    
+        highlights: List[JSONResponse] = Field(
+            description=f"List of {num_highlights} distinct highlight segments"
+        )
+
     try:
         # Initialize LLM based on provider
         if llm_provider == "gemini":
@@ -220,7 +224,9 @@ def GetMultipleHighlights(Transcription, num_highlights=1):
                 temperature=1.0,
                 google_api_key=google_api_key,
             )
-            print(f"Using Gemini 2.5 Flash model to generate {num_highlights} shorts...")
+            print(
+                f"Using Gemini 2.5 Flash model to generate {num_highlights} shorts..."
+            )
         else:  # openai
             from langchain_openai import ChatOpenAI
 
@@ -229,11 +235,13 @@ def GetMultipleHighlights(Transcription, num_highlights=1):
                 temperature=1.0,
                 api_key=openai_api_key,
             )
-            print(f"Using OpenAI GPT-4o-mini model to generate {num_highlights} shorts...")
+            print(
+                f"Using OpenAI GPT-4o-mini model to generate {num_highlights} shorts..."
+            )
 
         # Use dynamic system prompt based on number of highlights
         dynamic_system = get_system_prompt(num_highlights)
-        
+
         prompt = ChatPromptTemplate.from_messages(
             [("system", dynamic_system), ("user", Transcription)]
         )
@@ -250,43 +258,45 @@ def GetMultipleHighlights(Transcription, num_highlights=1):
             return None
 
         highlights = response.highlights
-        
+
         if len(highlights) < num_highlights:
-            print(f"WARNING: Only received {len(highlights)} highlights instead of {num_highlights}")
-        
+            print(
+                f"WARNING: Only received {len(highlights)} highlights instead of {num_highlights}"
+            )
+
         # Process and validate each highlight
         result = []
         for i, highlight in enumerate(highlights, 1):
             try:
                 start = int(highlight.start)
                 end = int(highlight.end)
-                
+
                 # Validate times
                 if start < 0 or end < 0:
                     print(f"WARNING: Highlight {i} has negative time values, skipping")
                     continue
-                    
+
                 if end <= start:
                     print(f"WARNING: Highlight {i} has invalid time range, skipping")
                     continue
-                
+
                 # Log the selected segment
                 print(f"\n{'='*60}")
                 print(f"HIGHLIGHT {i}/{num_highlights}:")
                 print(f"Time: {start}s - {end}s ({end-start}s duration)")
                 print(f"Content preview: {highlight.content[:100]}...")
                 print(f"{'='*60}\n")
-                
+
                 result.append((start, end))
-                
+
             except (ValueError, TypeError) as e:
                 print(f"ERROR: Could not parse highlight {i}: {e}")
                 continue
-        
+
         if len(result) == 0:
             print("ERROR: No valid highlights could be extracted")
             return None
-            
+
         return result
 
     except Exception as e:
@@ -298,6 +308,7 @@ def GetMultipleHighlights(Transcription, num_highlights=1):
         print(f"\nTranscription length: {len(Transcription)} characters")
         print(f"{'='*60}\n")
         import traceback
+
         traceback.print_exc()
         return None
 
